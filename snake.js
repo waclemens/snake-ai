@@ -2,11 +2,16 @@
 //https://www.educative.io/blog/javascript-snake-game-tutorial
 
 const boardBorder = '#ffffff';
-const boardBackground = "#000000";
+const boardBackground = '#000000';
 const snakeBorder = '#000000';
 const snakeBackground = '#04ff00';
 const foodBorder = '#000000';
 const foodBackground = '#ff0000';
+
+const LEFT_KEY = 37;
+const RIGHT_KEY = 39;
+const UP_KEY = 38;
+const DOWN_KEY = 40;
 
 let snakeboardCtx;
 let snakeboard;
@@ -18,57 +23,196 @@ let snake = [
   {x: 160, y: 200},
 ];
 
-let score = 0;
-let changingDirection = false; //true if changing direction
-
-//horizontal velocity
-let foodX;
-let foodY;
-let dx = 10;
-
+let dx = 10; //horizontal velocity
 let dy = 0; //vertical velocity
 
+let score = 0;
+let changingDirection = false; //true if changing direction
+let food = {};
+
 //init game
-window.addEventListener("load", () => {
-  snakeboard = document.querySelector(".snakeboard"); //get the canvas element
-  snakeboardCtx = snakeboard.getContext("2d"); //return a two dimensional drawing context
+window.addEventListener('load', () => {
+  snakeboard = document.querySelector('.snakeboard'); //get the canvas element
+  snakeboardCtx = snakeboard.getContext('2d'); //return a two dimensional drawing context
   main(); //start game
   genFood();
-  document.addEventListener("keydown", changeDirection);
+  document.addEventListener('keydown', changeDirection);
 });
 
 //main function called repeatedly to keep the game running
-const main = () => {
+const main = async () => {
   if(hasGameEnded()) return;
   changingDirection = false;
 
-  setTimeout(() => {
-    clearBoard();
-    drawFood();
-    moveSnake();
-    drawSnake();
+  await setTimeout(async () => {
+    await clearBoard();
+    await drawFood();
+    await targetFood();
+    await moveSnake();
+    await drawSnake();
     main(); //repeat
-  }, 60)
+  }, 0)
+};
+
+//first attempt at ai, no research, out the butt programming, kinda terrible
+const targetFood = async () => {
+  let eventObj = document.createEvent('Events');
+  eventObj.initEvent('keydown', true, true);
+
+  const head = {x: snake[0].x, y: snake[0].y};
+  const goingUp = dy === -10;
+  const goingDown = dy === 10;
+  const goingRight = dx === 10;
+  const goingLeft = dx === -10;
+  let futureVel = {x: 0, y: 0};
+
+  //goto food
+  if(head.x < food.x) {
+    eventObj.keyCode = RIGHT_KEY;console.log('right');
+    futureVel.x = 10;
+    futureVel.y = 0;
+  }
+  else if(head.x > food.x) {
+    eventObj.keyCode = LEFT_KEY;console.log('left');
+    futureVel.x = -10;
+    futureVel.y = 0;
+  }
+  else if(head.y < food.y) {
+    eventObj.keyCode = DOWN_KEY;console.log('down');
+    futureVel.x = 0;
+    futureVel.y = 10;
+  }
+  else if(head.y > food.y) {
+    eventObj.keyCode = UP_KEY;console.log('up');
+    futureVel.x = 0;
+    futureVel.y = -10;
+  }
+
+  //avoid wall collision
+  if(head.x === snakeboard.width - 10 && !goingDown) {
+    eventObj.keyCode = DOWN_KEY;console.log('down');
+    futureVel.x = 0;
+    futureVel.y = 10;
+  }
+  else if(head.y === snakeboard.height - 10 && !goingLeft) {
+    eventObj.keyCode = LEFT_KEY;console.log('left');
+    futureVel.x = -10;
+    futureVel.y = 0;
+  }
+  else if(head.x === 0 && !goingUp) {
+    eventObj.keyCode = UP_KEY;console.log('up');
+    futureVel.x = 0;
+    futureVel.y = -10;
+  }
+  else if(head.y === 0 && !goingRight) {
+    eventObj.keyCode = RIGHT_KEY;console.log('right');
+    futureVel.x = 10;
+    futureVel.y = 0;
+  }
+
+  //check if snake gana hit itself
+  const checkCollide = (pos) => {
+      return (element) => element.x === pos.x && element.y === pos.y;
+  };
+  const futureHead = {x: snake[0].x + futureVel.x, y: snake[0].y + futureVel.y};
+  const willCollide = snake.some(checkCollide(futureHead));
+
+  //generate future move cross
+  if(willCollide) {
+    console.log('willCollide');
+    let futurePos = {
+      up: [],
+      down: [],
+      left: [],
+      right: [],
+    };
+    for(let i = head.x + 10; i <= snakeboard.width - 10; i += 10) {
+      futurePos.right.push({x: i, y: head.y});
+    }
+    for(let i = head.y + 10; i <= snakeboard.height - 10; i += 10) {
+      futurePos.down.push({x: head.x, y: i});
+    }
+    for(let i = head.x - 10; i >= 0; i -= 10) {
+      futurePos.left.push({x: i, y: head.y});
+    }
+    for(let i = head.y - 10; i >= 0; i -= 10) {
+      futurePos.up.push({x: head.x, y: i});
+    }
+
+    let collisionSet = {
+      up: [],
+      down: [],
+      left: [],
+      right: [],
+    };
+
+    Object.entries(futurePos).forEach(([direction, posSet]) => {
+      posSet.forEach(pos => {
+        const willCollide = snake.some(checkCollide(pos));
+        collisionSet[direction].push(willCollide);
+      });
+    });
+
+    let survivalMode = false;
+    console.log(collisionSet);
+    if(collisionSet.up.length > 0 && !collisionSet.up.includes(true)) {eventObj.keyCode = UP_KEY;console.log('up');}
+    else if(collisionSet.down.length > 0 && !collisionSet.down.includes(true)) {eventObj.keyCode = DOWN_KEY;console.log('down');}
+    else if(collisionSet.left.length > 0 && !collisionSet.left.includes(true)) {eventObj.keyCode = LEFT_KEY;console.log('left');}
+    else if(collisionSet.right.length > 0 && !collisionSet.right.includes(true)) {eventObj.keyCode = RIGHT_KEY;console.log('right');}
+    else survivalMode = true;
+
+    let collisionBools = {
+      up: 0,
+      down: 0,
+      left: 0,
+      right: 0,
+    };
+
+    if(survivalMode) {
+      console.log('survival mode');
+      Object.entries(collisionSet).forEach(([direction, boolSet]) => {
+        let foundFirst = false;
+        boolSet.forEach(isCollision => {
+          if(isCollision && !foundFirst) {
+            collisionBools[direction] +=1;
+            foundFirst = true;
+            return;
+          }
+          if(!foundFirst) {
+            collisionBools[direction] +=1;
+          }
+        });
+      });
+
+      const survivalMove = Object.keys(collisionBools).reduce((a, b) => collisionBools[a] > collisionBools[b] ? a : b);
+      if(survivalMove === 'up') {eventObj.keyCode = UP_KEY;console.log('up');}
+      else if(survivalMove === 'down') {eventObj.keyCode = DOWN_KEY;console.log('down');}
+      else if(survivalMove === 'left') {eventObj.keyCode = LEFT_KEY;console.log('left');}
+      else if(survivalMove === 'right') {eventObj.keyCode = RIGHT_KEY;console.log('right');}
+    }
+  }
+
+  document.dispatchEvent(eventObj);
 };
 
 //draw a border around the canvas
-const clearBoard = () => {
+const clearBoard = async () => {
   snakeboardCtx.fillStyle = boardBackground; //select the color to fill the drawing
   snakeboardCtx.strokestyle = boardBorder; //select the color for the border of the canvas
-  snakeboardCtx.fillRect(0, 0, snakeboard.width, snakeboard.height); //draw a "filled" rectangle to cover the entire canvas
-  snakeboardCtx.strokeRect(0, 0, snakeboard.width, snakeboard.height); //draw a "border" around the entire canvas
+  snakeboardCtx.fillRect(0, 0, snakeboard.width, snakeboard.height); //draw a 'filled' rectangle to cover the entire canvas
+  snakeboardCtx.strokeRect(0, 0, snakeboard.width, snakeboard.height); //draw a 'border' around the entire canvas
 };
 
 //draw the snake on the canvas
-const drawSnake = () => {
+const drawSnake = async () => {
   snake.forEach(drawSnakePart); //draw each part
 };
 
-const drawFood = () => {
+const drawFood = async () => {
   snakeboardCtx.fillStyle = foodBackground;
   snakeboardCtx.strokestyle = foodBorder;
-  snakeboardCtx.fillRect(foodX, foodY, 10, 10);
-  snakeboardCtx.strokeRect(foodX, foodY, 10, 10);
+  snakeboardCtx.fillRect(food.x, food.y, 10, 10);
+  snakeboardCtx.strokeRect(food.x, food.y, 10, 10);
 };
 
 //draw one snake part
@@ -76,7 +220,7 @@ const drawSnakePart = (snakePart) => {
   snakeboardCtx.fillStyle = snakeBackground; //set the color of the snake part
   snakeboardCtx.strokestyle = snakeBorder; //set the border color of the snake part
 
-  //draw a "filled" rectangle to represent the snake part at the coordinates
+  //draw a 'filled' rectangle to represent the snake part at the coordinates
   snakeboardCtx.fillRect(snakePart.x, snakePart.y, 10, 10); //the part is located
   snakeboardCtx.strokeRect(snakePart.x, snakePart.y, 10, 10); //draw a border around the snake part
 };
@@ -99,22 +243,17 @@ const randomFood = (min, max) => {
 };
 
 const genFood = () => {
-  foodX = randomFood(0, snakeboard.width - 10); //generate a random number the food x-coordinate
-  foodY = randomFood(0, snakeboard.height - 10); //generate a random number for the food y-coordinate
+  food['x'] = randomFood(0, snakeboard.width - 10); //generate a random number the food x-coordinate
+  food['y'] = randomFood(0, snakeboard.height - 10); //generate a random number for the food y-coordinate
   
   //if the new food location is where the snake currently is, generate a new food location
   snake.forEach((part) => {
-    const hasEaten = part.x == foodX && part.y == foodY;
+    const hasEaten = part.x == food.x && part.y == food.y;
     if(hasEaten) genFood();
   });
 };
 
 const changeDirection = (event) => {
-  const LEFT_KEY = 37;
-  const RIGHT_KEY = 39;
-  const UP_KEY = 38;
-  const DOWN_KEY = 40;
-
   if(changingDirection) return; //prevent the snake from reversing
 
   changingDirection = true;
@@ -142,10 +281,10 @@ const changeDirection = (event) => {
   }
 };
 
-const moveSnake = () => {
+const moveSnake = async () => {
   const head = {x: snake[0].x + dx, y: snake[0].y + dy}; //create the new Snake's head
   snake.unshift(head); //add the new head to the beginning of snake body
-  const hasEatenFood = snake[0].x === foodX && snake[0].y === foodY;
+  const hasEatenFood = snake[0].x === food.x && snake[0].y === food.y;
 
   if(hasEatenFood) {
     score += 1; //increase score
