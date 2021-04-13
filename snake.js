@@ -13,6 +13,13 @@ const RIGHT_KEY = 39;
 const UP_KEY = 38;
 const DOWN_KEY = 40;
 
+const keys = {
+  'up': UP_KEY,
+  'down': DOWN_KEY,
+  'left': LEFT_KEY,
+  'right': RIGHT_KEY,
+};
+
 let snakeboardCtx;
 let snakeboard;
 let snake = [
@@ -41,157 +48,36 @@ window.addEventListener('load', () => {
 
 //main function called repeatedly to keep the game running
 const main = async () => {
-  if(hasGameEnded()) return;
+  if(hasGameEnded()) resetGame();
   changingDirection = false;
 
   await setTimeout(async () => {
     await clearBoard();
     await drawFood();
-    await targetFood();
+    await simpleAi();
     await moveSnake();
     await drawSnake();
     main(); //repeat
   }, 0)
 };
 
-//first attempt at ai, no research, out the butt programming, kinda terrible
-const targetFood = async () => {
+const resetGame = () => {
+	snake = [
+	  {x: 200, y: 200},
+	  {x: 190, y: 200},
+	  {x: 180, y: 200},
+	  {x: 170, y: 200},
+	  {x: 160, y: 200},
+	];
+	score = 0;
+	dx = 10;
+	dy = 0;
+};
+
+const sendMove = (direction) => {
   let eventObj = document.createEvent('Events');
   eventObj.initEvent('keydown', true, true);
-
-  const head = {x: snake[0].x, y: snake[0].y};
-  const goingUp = dy === -10;
-  const goingDown = dy === 10;
-  const goingRight = dx === 10;
-  const goingLeft = dx === -10;
-  let futureVel = {x: 0, y: 0};
-
-  //goto food
-  if(head.x < food.x) {
-    eventObj.keyCode = RIGHT_KEY;console.log('right');
-    futureVel.x = 10;
-    futureVel.y = 0;
-  }
-  else if(head.x > food.x) {
-    eventObj.keyCode = LEFT_KEY;console.log('left');
-    futureVel.x = -10;
-    futureVel.y = 0;
-  }
-  else if(head.y < food.y) {
-    eventObj.keyCode = DOWN_KEY;console.log('down');
-    futureVel.x = 0;
-    futureVel.y = 10;
-  }
-  else if(head.y > food.y) {
-    eventObj.keyCode = UP_KEY;console.log('up');
-    futureVel.x = 0;
-    futureVel.y = -10;
-  }
-
-  //avoid wall collision
-  if(head.x === snakeboard.width - 10 && !goingDown) {
-    eventObj.keyCode = DOWN_KEY;console.log('down');
-    futureVel.x = 0;
-    futureVel.y = 10;
-  }
-  else if(head.y === snakeboard.height - 10 && !goingLeft) {
-    eventObj.keyCode = LEFT_KEY;console.log('left');
-    futureVel.x = -10;
-    futureVel.y = 0;
-  }
-  else if(head.x === 0 && !goingUp) {
-    eventObj.keyCode = UP_KEY;console.log('up');
-    futureVel.x = 0;
-    futureVel.y = -10;
-  }
-  else if(head.y === 0 && !goingRight) {
-    eventObj.keyCode = RIGHT_KEY;console.log('right');
-    futureVel.x = 10;
-    futureVel.y = 0;
-  }
-
-  //check if snake gana hit itself
-  const checkCollide = (pos) => {
-      return (element) => element.x === pos.x && element.y === pos.y;
-  };
-  const futureHead = {x: snake[0].x + futureVel.x, y: snake[0].y + futureVel.y};
-  const willCollide = snake.some(checkCollide(futureHead));
-
-  //generate future move cross
-  if(willCollide) {
-    console.log('willCollide');
-    let futurePos = {
-      up: [],
-      down: [],
-      left: [],
-      right: [],
-    };
-    for(let i = head.x + 10; i <= snakeboard.width - 10; i += 10) {
-      futurePos.right.push({x: i, y: head.y});
-    }
-    for(let i = head.y + 10; i <= snakeboard.height - 10; i += 10) {
-      futurePos.down.push({x: head.x, y: i});
-    }
-    for(let i = head.x - 10; i >= 0; i -= 10) {
-      futurePos.left.push({x: i, y: head.y});
-    }
-    for(let i = head.y - 10; i >= 0; i -= 10) {
-      futurePos.up.push({x: head.x, y: i});
-    }
-
-    let collisionSet = {
-      up: [],
-      down: [],
-      left: [],
-      right: [],
-    };
-
-    Object.entries(futurePos).forEach(([direction, posSet]) => {
-      posSet.forEach(pos => {
-        const willCollide = snake.some(checkCollide(pos));
-        collisionSet[direction].push(willCollide);
-      });
-    });
-
-    let survivalMode = false;
-    console.log(collisionSet);
-    if(collisionSet.up.length > 0 && !collisionSet.up.includes(true)) {eventObj.keyCode = UP_KEY;console.log('up');}
-    else if(collisionSet.down.length > 0 && !collisionSet.down.includes(true)) {eventObj.keyCode = DOWN_KEY;console.log('down');}
-    else if(collisionSet.left.length > 0 && !collisionSet.left.includes(true)) {eventObj.keyCode = LEFT_KEY;console.log('left');}
-    else if(collisionSet.right.length > 0 && !collisionSet.right.includes(true)) {eventObj.keyCode = RIGHT_KEY;console.log('right');}
-    else survivalMode = true;
-
-    let collisionBools = {
-      up: 0,
-      down: 0,
-      left: 0,
-      right: 0,
-    };
-
-    if(survivalMode) {
-      console.log('survival mode');
-      Object.entries(collisionSet).forEach(([direction, boolSet]) => {
-        let foundFirst = false;
-        boolSet.forEach(isCollision => {
-          if(isCollision && !foundFirst) {
-            collisionBools[direction] +=1;
-            foundFirst = true;
-            return;
-          }
-          if(!foundFirst) {
-            collisionBools[direction] +=1;
-          }
-        });
-      });
-
-      const survivalMove = Object.keys(collisionBools).reduce((a, b) => collisionBools[a] > collisionBools[b] ? a : b);
-      if(survivalMove === 'up') {eventObj.keyCode = UP_KEY;console.log('up');}
-      else if(survivalMove === 'down') {eventObj.keyCode = DOWN_KEY;console.log('down');}
-      else if(survivalMove === 'left') {eventObj.keyCode = LEFT_KEY;console.log('left');}
-      else if(survivalMove === 'right') {eventObj.keyCode = RIGHT_KEY;console.log('right');}
-    }
-  }
-
+  eventObj.keyCode = keys[direction];
   document.dispatchEvent(eventObj);
 };
 
