@@ -48,15 +48,21 @@ window.addEventListener('load', () => {
 
 //main function called repeatedly to keep the game running
 const main = async () => {
-  if(hasGameEnded()) resetGame();
+  let isGameEnded = false;
+  if(hasGameEnded()) {
+  	resetGame();
+  	isGameEnded = true;
+  }
   changingDirection = false;
 
   await setTimeout(async () => {
     await clearBoard();
     await drawFood();
-    await simpleAi();
+    //await simpleAi();
+    await snakeMl();
     await moveSnake();
     await drawSnake();
+    await calcReward(isGameEnded);
     main(); //repeat
   }, 0)
 };
@@ -72,6 +78,8 @@ const resetGame = () => {
 	score = 0;
 	dx = 10;
 	dy = 0;
+  genFood();
+  document.querySelector('.score').innerHTML = score;
 };
 
 const sendMove = (direction) => {
@@ -180,4 +188,9 @@ const moveSnake = async () => {
   else {
     snake.pop(); //remove the last part of snake body
   }
+};
+
+//check if snake gana hit itself
+const checkCollide = (pos) => {
+    return (element) => element.x === pos.x && element.y === pos.y;
 };

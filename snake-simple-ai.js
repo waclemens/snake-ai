@@ -30,10 +30,6 @@ const simpleAi = async () => {
     futureVel.y = -10;
   }
 
-  //check if snake gana hit itself
-  const checkCollide = (pos) => {
-      return (element) => element.x === pos.x && element.y === pos.y;
-  };
   const futureHead = {x: snake[0].x + futureVel.x, y: snake[0].y + futureVel.y};
   const willCollide = snake.some(checkCollide(futureHead));
 
