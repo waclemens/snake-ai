@@ -23,14 +23,13 @@ const keys = {
 let snakeboardCtx;
 let snakeboard;
 let snake = [
-  {x: 200, y: 200},
-  {x: 190, y: 200},
-  {x: 180, y: 200},
-  {x: 170, y: 200},
-  {x: 160, y: 200},
+  {x: 40, y: 0},
+  {x: 30, y: 0},
+  {x: 20, y: 0},
+  {x: 10, y: 0},
 ];
 
-let dx = 10; //horizontal velocity
+let dx = 0; //horizontal velocity
 let dy = 0; //vertical velocity
 
 let score = 0;
@@ -50,39 +49,43 @@ window.addEventListener('load', () => {
 const main = async () => {
   let isGameEnded = false;
   if(hasGameEnded()) {
-  	resetGame();
-  	isGameEnded = true;
+    resetGame();
+    isGameEnded = true;
   }
   changingDirection = false;
 
   await setTimeout(async () => {
     await clearBoard();
-    await drawFood();
-    //await simpleAi();
-    await snakeMl();
-    await moveSnake();
     await drawSnake();
-    await calcReward(isGameEnded);
+    await drawFood();
+
+    //await simpleAi();
+    //await snakeMl();
+    //await cycleAi();
+    await cycleAiAdvance();
+    
+    await moveSnake();
+
+    //await calcReward(isGameEnded);
     main(); //repeat
   }, 0)
 };
 
 const resetGame = () => {
-	snake = [
-	  {x: 200, y: 200},
-	  {x: 190, y: 200},
-	  {x: 180, y: 200},
-	  {x: 170, y: 200},
-	  {x: 160, y: 200},
-	];
-	score = 0;
-	dx = 10;
-	dy = 0;
+  snake = [
+    {x: 40, y: 0},
+    {x: 30, y: 0},
+    {x: 20, y: 0},
+    {x: 10, y: 0},
+  ];
+  score = 0;
+  dx = 10;
+  dy = 0;
   genFood();
   document.querySelector('.score').innerHTML = score;
 };
 
-const sendMove = (direction) => {
+const sendMove = async (direction) => {
   let eventObj = document.createEvent('Events');
   eventObj.initEvent('keydown', true, true);
   eventObj.keyCode = keys[direction];
@@ -137,6 +140,7 @@ const randomFood = (min, max) => {
 };
 
 const genFood = () => {
+  if(snake.length === snakeboard.width / 10 * snakeboard.height / 10) {alert('You Win'); throw 'game ended...';}
   food['x'] = randomFood(0, snakeboard.width - 10); //generate a random number the food x-coordinate
   food['y'] = randomFood(0, snakeboard.height - 10); //generate a random number for the food y-coordinate
   
