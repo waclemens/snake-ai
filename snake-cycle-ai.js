@@ -2,7 +2,6 @@ const getStep = (pos) => {
   return (element) => element.x === pos.x && element.y === pos.y;
 };
 
-//just follows the ham circuit
 const cycleAi = async () => {
   const head = {'x': snake[0].x, 'y': snake[0].y};
   const currentStep = HAMILTONIAN_CIRCUIT.findIndex(getStep(head));
@@ -12,9 +11,9 @@ const cycleAi = async () => {
   sendMove(move);
 };
 
-let cooldown = Math.floor((1.004 ** score) - 1);
+let cooldown = snake.length/HAMILTONIAN_CIRCUIT.length*600;
 const cycleAiAdvance = async () => {
-  if(cooldown <= 0) {await doShortCut(); cooldown = Math.floor((1.004 ** score) - 1); return;}
+  if(cooldown <= 0) {await doShortCut(); cooldown = snake.length/HAMILTONIAN_CIRCUIT.length*600; return;}
   
   await cycleAi();
   cooldown -= 1;
